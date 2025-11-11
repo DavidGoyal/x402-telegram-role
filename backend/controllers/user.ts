@@ -1,0 +1,63 @@
+import type { Request, Response } from "express";
+import { prisma } from "../prisma/prisma";
+import { createNetworkUser, getBalance } from "../utils/user";
+
+export const getUserInfo = async (req: Request, res: Response) => {
+  try {
+    const { telegramId } = req.params;
+    if (!telegramId) {
+      return res.status(400).json({
+        success: false,
+        error: "Telegram ID is required",
+      });
+    }
+
+    let [networks, user] = await Promise.all([
+      prisma.network.findMany(),
+      prisma.user.findUnique({
+        where: { telegramId },
+      }),
+    ]);
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: { telegramId },
+      });
+    }
+
+    const networkUsers: {
+      networkId: string;
+      networkName: string;
+      publicKey: string;
+      balance: string;
+      privateKey: string;
+    }[] = [];
+
+    for (const network of networks) {
+      let networkUser = await prisma.networkUser.findUnique({
+        where: {
+          networkId_userId: { userId: user.id, networkId: network.id },
+        },
+      });
+      if (!networkUser) {
+        networkUser = await createNetworkUser(network.id, user.id, network);
+      }
+
+      const balance = await getBalance(network, networkUser.publicKey);
+      networkUsers.push({
+        networkId: network.id,
+        networkName: network.name,
+        publicKey: networkUser.publicKey,
+        balance,
+        privateKey: networkUser.privateKey,
+      });
+    }
+
+    res.status(200).json({ success: true, networkUsers });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Internal server error" });
+    return;
+  }
+};
