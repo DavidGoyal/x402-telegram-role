@@ -386,15 +386,6 @@ bot.on("callback_query", async (query) => {
         );
         return;
       }
-
-      const inviteLink = await bot.createChatInviteLink(subData.serverId, {
-        member_limit: 1,
-      });
-
-      bot.sendMessage(
-        chatId,
-        `Payment successful! 🔗 *Invite Link*\n\n${inviteLink.invite_link}`
-      );
     } catch (error) {
       console.error(
         error instanceof AxiosError

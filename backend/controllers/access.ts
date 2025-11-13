@@ -300,6 +300,14 @@ export const getAccess = async (req: Request, res: Response) => {
         res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
         res.setHeader("x-payment-response", responseHeader);
 
+        const inviteLink = await bot.createChatInviteLink(server.serverId, {
+          member_limit: 1,
+        });
+        await bot.sendMessage(
+          user.telegramId,
+          `Here is your invite link to the server ${server.name}: ${inviteLink.invite_link}`
+        );
+
         await prisma.roleAssigned.create({
           data: {
             userId,
@@ -316,13 +324,6 @@ export const getAccess = async (req: Request, res: Response) => {
             },
           });
           if (invoice) {
-            const inviteLink = await bot.createChatInviteLink(server.serverId, {
-              member_limit: 1,
-            });
-            await bot.sendMessage(
-              user.telegramId,
-              `Here is your invite link to the server ${server.name}: ${inviteLink.invite_link}`
-            );
             await prisma.invoice.delete({
               where: { id: invoice.id },
             });
