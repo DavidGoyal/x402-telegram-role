@@ -1,9 +1,5 @@
 import { Router } from "express";
-import {
-  getAllServers,
-  getChannelById,
-  getServerById,
-} from "../controllers/server";
+import { getAllServers, getServerById } from "../controllers/server.js";
 
 const router = Router();
 

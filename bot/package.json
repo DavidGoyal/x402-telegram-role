@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@types/node-telegram-bot-api": "^0.64.12",
-    "node-telegram-bot-api": "^0.66.0"
+    "axios": "^1.13.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "x402-axios": "^0.7.0",
+    "x402-fetch": "^0.7.0"
   }
 }

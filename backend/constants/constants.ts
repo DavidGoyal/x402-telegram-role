@@ -1,9 +1,4 @@
-import { Client, GatewayIntentBits } from "discord.js";
+import TelegramBot from "node-telegram-bot-api";
 
-export const botClient = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+const TOKEN = process.env.TELEGRAM_TOKEN;
+export const bot = new TelegramBot(TOKEN!);

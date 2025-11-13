@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import type { Request, Response } from "express";
-
-const prisma = new PrismaClient();
+import { prisma } from "../prisma/prisma.js";
 
 // Get all servers where bot is configured
 export const getAllServers = async (req: Request, res: Response) => {
@@ -12,6 +10,7 @@ export const getAllServers = async (req: Request, res: Response) => {
       success: true,
       servers: servers.map((server) => ({
         id: server.id,
+        name: server.name,
         serverId: server.serverId,
         receiverSolanaAddress: server.receiverSolanaAddress,
         receiverEthereumAddress: server.receiverEthereumAddress,
@@ -52,6 +51,7 @@ export const getServerById = async (req: Request, res: Response) => {
       success: true,
       server: {
         id: server.id,
+        name: server.name,
         serverId: server.serverId,
         receiverSolanaAddress: server.receiverSolanaAddress,
         receiverEthereumAddress: server.receiverEthereumAddress,

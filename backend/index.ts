@@ -1,11 +1,25 @@
 import express from "express";
+import { authenticate } from "./middleware.js";
+import accessRoutes from "./routes/access.js";
+import serverRoutes from "./routes/server.js";
+import userRoutes from "./routes/user.js";
 import cors from "cors";
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-app.listen(3000, () => {
-  console.log("Server is running on port 3000");
+app.use("/api/user", accessRoutes);
+app.use(authenticate);
+// Routes
+app.use("/api", userRoutes);
+app.use("/api", serverRoutes);
+
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
+
+export default app;

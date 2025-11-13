@@ -13,11 +13,12 @@ import {
   settleResponseHeader,
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
-import { botClient } from "../constants/constants";
-import { prisma } from "../prisma/prisma";
-import { createNetworkUser, getBalance } from "../utils/user";
-import type { Accepts } from "../types";
+// import { botClient } from "../constants/constants";
+import { prisma } from "../prisma/prisma.js";
+import { createNetworkUser, getBalance } from "../utils/user.js";
+import type { Accepts } from "../types.js";
 import { v4 as uuidv4 } from "uuid";
+import { bot } from "../constants/constants.js";
 
 const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
 const { verify, settle } = useFacilitator({ url: facilitatorUrl });
@@ -171,17 +172,6 @@ export const getAccess = async (req: Request, res: Response) => {
       });
     }
 
-    const botToken = process.env.TELEGRAM_TOKEN;
-    if (!botToken) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Telegram token is required" });
-    }
-
-    if (!botClient.isReady()) {
-      await botClient.login(botToken);
-    }
-
     const [server, network, user] = await Promise.all([
       prisma.server.findUnique({
         where: { serverId },
@@ -318,16 +308,25 @@ export const getAccess = async (req: Request, res: Response) => {
           },
         });
 
-        const invoice = await prisma.invoice.findUnique({
-          where: {
-            token,
-            expiresAt: { gt: new Date() },
-          },
-        });
-        if (invoice) {
-          await prisma.invoice.delete({
-            where: { id: invoice.id },
+        if (token) {
+          const invoice = await prisma.invoice.findUnique({
+            where: {
+              token,
+              expiresAt: { gt: new Date() },
+            },
           });
+          if (invoice) {
+            const inviteLink = await bot.createChatInviteLink(server.serverId, {
+              member_limit: 1,
+            });
+            await bot.sendMessage(
+              user.telegramId,
+              `Here is your invite link to the server ${server.name}: ${inviteLink.invite_link}`
+            );
+            await prisma.invoice.delete({
+              where: { id: invoice.id },
+            });
+          }
         }
 
         res.status(200).json({ success: true });
@@ -350,24 +349,12 @@ export const getAccess = async (req: Request, res: Response) => {
 
 export const createInvoice = async (req: Request, res: Response) => {
   try {
-    const { telegramId, serverId, channelId, roleApplicableTime } = req.body;
-    if (!telegramId || !serverId || !channelId || !roleApplicableTime) {
+    const { telegramId, serverId, roleApplicableTime } = req.body;
+    if (!telegramId || !serverId || !roleApplicableTime) {
       return res.status(400).json({
         success: false,
-        error:
-          "Telegram ID, network ID, server ID and role applicable time are required",
+        error: "Telegram ID, server ID and role applicable time are required",
       });
-    }
-
-    const token = process.env.TELEGRAM_TOKEN;
-    if (!token) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Telegram token is required" });
-    }
-
-    if (!botClient.isReady()) {
-      await botClient.login(token);
     }
 
     const [server, network] = await Promise.all([
