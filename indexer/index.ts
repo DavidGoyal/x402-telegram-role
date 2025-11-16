@@ -12,6 +12,7 @@ async function main() {
         expiryTime: {
           lt: new Date(),
         },
+        active: true,
       },
     });
 
@@ -29,9 +30,12 @@ async function main() {
         only_if_banned: false,
       });
 
-      await prisma.roleAssigned.delete({
+      await prisma.roleAssigned.update({
         where: {
           id: roleAssignedUser.id,
+        },
+        data: {
+          active: false,
         },
       });
     }

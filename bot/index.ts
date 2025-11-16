@@ -5,8 +5,7 @@ import { createSigner } from "x402-fetch";
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const API_URL = process.env.API_URL || "https://x402-telegram-role.vercel.app";
-const FRONTEND_URL =
-  process.env.FRONTEND_URL || "https://x402-discord-role.vercel.app";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://x402-role.vercel.app";
 if (!TOKEN || !API_URL || !FRONTEND_URL) {
   throw new Error("TELEGRAM_TOKEN or API_URL or FRONTEND_URL is not set");
 }
@@ -341,7 +340,10 @@ bot.on("callback_query", async (query) => {
     }
 
     if (!baseNetworkUser) {
-      bot.sendMessage(chatId, "No network user found for base-sepolia.");
+      bot.sendMessage(
+        chatId,
+        "You do not have enough balance to purchase this role."
+      );
       return;
     }
 

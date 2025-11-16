@@ -1,25 +1,30 @@
+import cors from "cors";
 import express from "express";
-import { authenticate } from "./middleware.js";
 import accessRoutes from "./routes/access.js";
 import serverRoutes from "./routes/server.js";
+import statsRoutes from "./routes/stats.js";
 import userRoutes from "./routes/user.js";
-import cors from "cors";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
 // Middleware
+app.use(cookieParser());
 app.use(cors());
 app.use(express.json());
 
 app.use("/api/user", accessRoutes);
-app.use(authenticate);
-// Routes
+app.use("/api", statsRoutes);
 app.use("/api", userRoutes);
 app.use("/api", serverRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
+});
+
+app.listen(3002, () => {
+  console.log(`Server is running on port 3002`);
 });
 
 export default app;

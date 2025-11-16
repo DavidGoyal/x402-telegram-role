@@ -48,23 +48,27 @@ model NetworkUser {
 }
 
 model Server {
-  id                      String @id @default(uuid())
+  id                      String         @id @default(uuid())
   name                    String
-  serverId                String @unique
+  serverId                String         @unique
   receiverSolanaAddress   String
   receiverEthereumAddress String
   costInUsdc              BigInt
   maxRoleApplicableTime   Int[]
+  roleAssigneds           RoleAssigned[]
 
   @@index([serverId])
 }
 
 model RoleAssigned {
-  id         String   @id @default(uuid())
-  userId     String
-  serverId   String
-  expiryTime DateTime
-  createdAt  DateTime @default(now())
+  id             String   @id @default(uuid())
+  userId         String
+  serverId       String
+  expiryTime     DateTime
+  createdAt      DateTime @default(now())
+  serverNormalId String
+  server         Server   @relation(fields: [serverNormalId], references: [id])
+  active         Boolean  @default(true)
 
   @@index([expiryTime])
 }

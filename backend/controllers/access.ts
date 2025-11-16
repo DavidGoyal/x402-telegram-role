@@ -312,6 +312,7 @@ export const getAccess = async (req: Request, res: Response) => {
           data: {
             userId,
             serverId,
+            serverNormalId: server.id,
             expiryTime: new Date(Date.now() + roleApplicableTime * 1000),
           },
         });
@@ -449,6 +450,34 @@ export const createInvoice = async (req: Request, res: Response) => {
     });
 
     res.status(200).json({ success: true, token: invoice.token });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Internal server error" });
+    return;
+  }
+};
+
+export const getInvoice = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.query;
+    if (!token) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Token is required" });
+    }
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { token: token as string, expiresAt: { gt: new Date() } },
+    });
+
+    if (!invoice) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Invoice not found" });
+    }
+
+    res.status(200).json({ success: true, invoice });
     return;
   } catch (error) {
     console.error(error);
