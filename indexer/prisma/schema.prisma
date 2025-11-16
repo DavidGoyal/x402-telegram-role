@@ -51,6 +51,7 @@ model Server {
   id                      String         @id @default(uuid())
   name                    String
   serverId                String         @unique
+  ownerAddress            String
   receiverSolanaAddress   String
   receiverEthereumAddress String
   costInUsdc              BigInt
@@ -58,6 +59,7 @@ model Server {
   roleAssigneds           RoleAssigned[]
 
   @@index([serverId])
+  @@index([ownerAddress])
 }
 
 model RoleAssigned {

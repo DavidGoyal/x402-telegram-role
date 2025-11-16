@@ -2,9 +2,10 @@ import axios, { AxiosError } from "axios";
 import TelegramBot from "node-telegram-bot-api";
 import { withPaymentInterceptor } from "x402-axios";
 import { createSigner } from "x402-fetch";
+import jwt from "jsonwebtoken";
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
-const API_URL = process.env.API_URL || "https://x402-telegram-role.vercel.app";
+const API_URL = process.env.API_URL || "http://localhost:3001";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://x402-role.vercel.app";
 if (!TOKEN || !API_URL || !FRONTEND_URL) {
   throw new Error("TELEGRAM_TOKEN or API_URL or FRONTEND_URL is not set");
@@ -254,7 +255,7 @@ bot.on("callback_query", async (query) => {
     // Create time options based on maxRoleApplicableTime
     const timeButtons = serverConfig.maxRoleApplicableTime.map((time) => [
       {
-        text: `⏰ ${time / 86400} days - ${
+        text: `⏰ ${(time / 86400).toFixed(2)} days - ${
           (Number(serverConfig.costInUsdc) * (time / 86400)) / 1000000
         } USDC`,
         callback_data: `time_${time}_${serverId}`,
@@ -310,9 +311,9 @@ bot.on("callback_query", async (query) => {
     // Ask for payment mode
     bot.sendMessage(
       chatId,
-      `💳 *Choose Payment Method*\n\nServer: ${subData.serverName}\nDuration: ${
-        Number(time) / 86400
-      } days\nTotal Cost: ${
+      `💳 *Choose Payment Method*\n\nServer: ${
+        subData.serverName
+      }\nDuration: ${(Number(time) / 86400).toFixed(2)} days\nTotal Cost: ${
         totalCost / 1000000
       } USDC\n\nHow would you like to pay?`,
       {
@@ -355,9 +356,14 @@ bot.on("callback_query", async (query) => {
       return;
     }
 
+    const privateKey = jwt.verify(
+      baseNetworkUser?.privateKey ?? "",
+      process.env.JWT_SECRET!
+    ) as { privateKey: string };
+
     const signer = await createSigner(
       "base-sepolia",
-      baseNetworkUser?.privateKey ?? ""
+      privateKey?.privateKey ?? ""
     );
 
     try {
@@ -435,7 +441,11 @@ bot.on("callback_query", async (query) => {
 
       bot.sendMessage(
         chatId,
-        `💰 Payment Invoice for ${subData.serverName} subscription\n\n**Duration:** ${durationInDays} days\n\n**Please visit the following link to pay:** ${FRONTEND_URL}/invoice/${token}\n\n**Please pay within 5 minutes of generating the invoice**`
+        `💰 Payment Invoice for ${
+          subData.serverName
+        } subscription\n\n**Duration:** ${durationInDays.toFixed(
+          2
+        )} days\n\n**Please visit the following link to pay:** ${FRONTEND_URL}/invoice/telegram/${token}\n\n**Please pay within 5 minutes of generating the invoice**`
       );
 
       return;

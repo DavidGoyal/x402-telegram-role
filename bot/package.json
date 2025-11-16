@@ -10,8 +10,10 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node-telegram-bot-api": "^0.64.12",
     "axios": "^1.13.2",
+    "jsonwebtoken": "^9.0.2",
     "node-telegram-bot-api": "^0.66.0",
     "x402-axios": "^0.7.0",
     "x402-fetch": "^0.7.0"
