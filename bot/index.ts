@@ -5,7 +5,7 @@ import { createSigner } from "x402-fetch";
 import jwt from "jsonwebtoken";
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
-const API_URL = process.env.API_URL || "http://localhost:3001";
+const API_URL = process.env.API_URL || "https://x402-telegram-role.vercel.app";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://x402-role.vercel.app";
 if (!TOKEN || !API_URL || !FRONTEND_URL) {
   throw new Error("TELEGRAM_TOKEN or API_URL or FRONTEND_URL is not set");
@@ -126,6 +126,8 @@ const userState: Record<
 const userSubscriptionData: Record<string, UserSubscriptionState> = {};
 
 bot.onText(/\/start/, (msg) => {
+  if (msg.chat.type !== "private") return;
+
   const welcomeMessage = `*Hello! Welcome to X402 Role Distributor Bot 🤖*  
 
 Select the server you want to buy the subscription for and the subscription applicable time.
@@ -471,4 +473,39 @@ bot.on("message", async (msg) => {
   // Currently all interactions are handled via inline buttons
 });
 
+bot.on("chat_join_request", async (msg) => {
+  if (msg.chat.type === "private") return;
+  const inviteLink = msg.invite_link?.invite_link;
+  const chatId = msg.chat.id;
+
+  try {
+    const response = await axios.post(
+      `${API_URL}/api/user/isValidPerson`,
+      {
+        inviteLink,
+        serverId: chatId,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
+        },
+      }
+    );
+
+    if (!response.data.success) {
+      return;
+    }
+
+    if (response.data.telegramId != msg.from.id) {
+      console.log("User is not the same as the one in the role assigned");
+      return;
+    }
+
+    bot.approveChatJoinRequest(chatId, msg.from.id);
+    return;
+  } catch (error) {
+    console.error(error);
+    return;
+  }
+});
 console.log("Bot is running...");

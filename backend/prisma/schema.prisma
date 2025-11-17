@@ -14,11 +14,12 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  telegramId   String        @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  networkUsers NetworkUser[]
+  id               String        @id @default(uuid())
+  telegramUsername String
+  telegramId       String        @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  networkUsers     NetworkUser[]
 
   @@index([telegramId])
 }
@@ -67,11 +68,16 @@ model RoleAssigned {
   userId         String
   serverId       String
   expiryTime     DateTime
+  amount         BigInt
+  txnLink        String
+  joined         Boolean  @default(false)
+  inviteLink     String
   createdAt      DateTime @default(now())
   serverNormalId String
   server         Server   @relation(fields: [serverNormalId], references: [id])
   active         Boolean  @default(true)
 
+  @@unique([inviteLink, serverId])
   @@index([expiryTime])
 }
 

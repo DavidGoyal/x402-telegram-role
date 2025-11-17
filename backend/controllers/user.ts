@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../prisma/prisma.js";
 import { createNetworkUser, getBalance } from "../utils/user.js";
+import { bot } from "../constants/constants.js";
 
 export const getUserByTelegramId = async (req: Request, res: Response) => {
   try {
@@ -20,8 +21,12 @@ export const getUserByTelegramId = async (req: Request, res: Response) => {
     ]);
 
     if (!user) {
+      const telegramUsername = await bot
+        .getChat(telegramId)
+        .then((chat) => chat.username || chat.first_name);
+
       user = await prisma.user.create({
-        data: { telegramId },
+        data: { telegramId, telegramUsername: telegramUsername ?? "" },
       });
     }
 

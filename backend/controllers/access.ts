@@ -301,7 +301,7 @@ export const getAccess = async (req: Request, res: Response) => {
         res.setHeader("x-payment-response", responseHeader);
 
         const inviteLink = await bot.createChatInviteLink(server.serverId, {
-          member_limit: 1,
+          creates_join_request: true,
         });
         await bot.sendMessage(
           user.telegramId,
@@ -313,6 +313,9 @@ export const getAccess = async (req: Request, res: Response) => {
             userId,
             serverId,
             serverNormalId: server.id,
+            amount: totalCost,
+            inviteLink: inviteLink.invite_link,
+            txnLink: settleResponse.transaction,
             expiryTime: new Date(Date.now() + roleApplicableTime * 1000),
           },
         });
@@ -389,9 +392,13 @@ export const createInvoice = async (req: Request, res: Response) => {
       },
     });
     if (!user) {
+      const telegramUsername = await bot
+        .getChat(telegramId)
+        .then((chat) => chat.username || chat.first_name);
       const newUser = await prisma.user.create({
         data: {
           telegramId,
+          telegramUsername: telegramUsername ?? "",
         },
       });
 
@@ -478,6 +485,58 @@ export const getInvoice = async (req: Request, res: Response) => {
     }
 
     res.status(200).json({ success: true, invoice });
+    return;
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Internal server error" });
+    return;
+  }
+};
+
+export const isValidPersonJoiningServer = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { inviteLink, serverId } = req.body;
+    if (!inviteLink || !serverId) {
+      return res.status(400).json({
+        success: false,
+        error: "Invite link and server ID are required",
+      });
+    }
+
+    const roleAssigned = await prisma.roleAssigned.findUnique({
+      where: {
+        inviteLink_serverId: { inviteLink, serverId: serverId.toString() },
+      },
+    });
+    if (!roleAssigned) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Role assigned not found" });
+    }
+
+    if (roleAssigned.joined) {
+      return res.status(400).json({
+        success: false,
+        error: "Person has already joined the server",
+      });
+    }
+
+    await prisma.roleAssigned.update({
+      where: { id: roleAssigned.id },
+      data: { joined: true },
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { telegramId: roleAssigned.userId },
+    });
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    res.status(200).json({ success: true, telegramId: user.telegramId });
     return;
   } catch (error) {
     console.error(error);
