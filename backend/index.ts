@@ -10,7 +10,12 @@ const app = express();
 
 // Middleware
 app.use(cookieParser());
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 app.use("/api/user", accessRoutes);
@@ -21,10 +26,6 @@ app.use("/api", serverRoutes);
 // Health check
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
-});
-
-app.listen(3001, () => {
-  console.log("Server is running on port 3001");
 });
 
 export default app;

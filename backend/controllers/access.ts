@@ -311,6 +311,7 @@ export const getAccess = async (req: Request, res: Response) => {
         await prisma.roleAssigned.create({
           data: {
             userId,
+            username: user.telegramUsername,
             serverId,
             serverNormalId: server.id,
             amount: totalCost,

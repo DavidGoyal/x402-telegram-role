@@ -66,6 +66,7 @@ model Server {
 model RoleAssigned {
   id             String   @id @default(uuid())
   userId         String
+  username       String
   serverId       String
   expiryTime     DateTime
   amount         BigInt
