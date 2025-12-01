@@ -5,8 +5,8 @@ import { createSigner } from "x402-fetch";
 import jwt from "jsonwebtoken";
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
-const API_URL = process.env.API_URL || "https://x402-telegram-role.vercel.app";
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://x402-role.vercel.app";
+const API_URL = process.env.API_URL || "http://localhost:3002";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http:/localhost:3000";
 if (!TOKEN || !API_URL || !FRONTEND_URL) {
   throw new Error("TELEGRAM_TOKEN or API_URL or FRONTEND_URL is not set");
 }
@@ -16,7 +16,7 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 interface ServerConfig {
   id: string;
   name: string;
-  serverId: string;
+  serverTelegramId: string;
   defaultChannelId: string;
   receiverSolanaAddress: string;
   receiverEthereumAddress: string;
@@ -114,6 +114,7 @@ async function fetchAllServers(): Promise<ServerConfig[]> {
 interface UserSubscriptionState {
   serverId?: string;
   serverName?: string;
+  serverTelegramId?: string;
   time?: number;
   cost?: number;
 }
@@ -215,7 +216,7 @@ bot.on("callback_query", async (query) => {
     const serverButtons = servers.map((server) => [
       {
         text: `🎮 Server Name: ${server.name}`,
-        callback_data: `server_${server.serverId}`,
+        callback_data: `server_${server.serverTelegramId}`,
       },
     ]);
 
@@ -234,14 +235,14 @@ bot.on("callback_query", async (query) => {
     userSubscriptionData[userId] = {};
   } else if (action?.startsWith("server_")) {
     // User selected a server
-    const serverId = action.replace("server_", "");
+    const serverTelegramId = action.replace("server_", "");
 
-    if (!serverId) {
+    if (!serverTelegramId) {
       bot.sendMessage(chatId, "Invalid server selection.");
       return;
     }
 
-    const serverConfig = await fetchServerConfig(serverId);
+    const serverConfig = await fetchServerConfig(serverTelegramId);
 
     if (!serverConfig) {
       bot.sendMessage(chatId, "Server configuration not found.");
@@ -250,8 +251,9 @@ bot.on("callback_query", async (query) => {
 
     // Store server selection
     userSubscriptionData[userId] = {
-      serverId: serverConfig.serverId,
+      serverId: serverConfig.id,
       serverName: serverConfig.name,
+      serverTelegramId: serverConfig.serverTelegramId,
     };
 
     // Create time options based on maxRoleApplicableTime
@@ -260,7 +262,7 @@ bot.on("callback_query", async (query) => {
         text: `⏰ ${(time / 86400).toFixed(2)} days - ${
           (Number(serverConfig.costInUsdc) * (time / 86400)) / 1000000
         } USDC`,
-        callback_data: `time_${time}_${serverId}`,
+        callback_data: `time_${time}_${serverTelegramId}`,
       },
     ]);
 
@@ -282,15 +284,15 @@ bot.on("callback_query", async (query) => {
     // User selected a time duration
     const parts = action.split("_");
     const time = parts[1];
-    const serverId = parts.slice(2).join("_");
+    const serverTelegramId = parts.slice(2).join("_");
     const subData = userSubscriptionData[userId];
 
-    if (!time || !serverId || !subData) {
+    if (!time || !serverTelegramId || !subData) {
       bot.sendMessage(chatId, "Invalid selection.");
       return;
     }
 
-    const serverConfig = await fetchServerConfig(serverId as string);
+    const serverConfig = await fetchServerConfig(serverTelegramId as string);
     if (!serverConfig) {
       bot.sendMessage(chatId, "Server configuration not found.");
       return;
@@ -308,7 +310,8 @@ bot.on("callback_query", async (query) => {
     }
     userSubscriptionData[userId].time = Number(time);
     userSubscriptionData[userId].cost = totalCost;
-    userSubscriptionData[userId].serverId = serverId;
+    userSubscriptionData[userId].serverId = serverConfig.id;
+    userSubscriptionData[userId].serverTelegramId = serverTelegramId;
 
     // Ask for payment mode
     bot.sendMessage(
@@ -337,7 +340,13 @@ bot.on("callback_query", async (query) => {
     );
     const userBalance = baseNetworkUser?.balance;
 
-    if (!subData || !subData.serverId || !subData.cost || !subData.time) {
+    if (
+      !subData ||
+      !subData.serverId ||
+      !subData.serverTelegramId ||
+      !subData.cost ||
+      !subData.time
+    ) {
       bot.sendMessage(chatId, "Please start the subscription process again.");
       return;
     }

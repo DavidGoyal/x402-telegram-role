@@ -51,35 +51,36 @@ model NetworkUser {
 model Server {
   id                      String         @id @default(uuid())
   name                    String
-  serverId                String         @unique
+  serverTelegramId        String         @unique
   ownerAddress            String
   receiverSolanaAddress   String
   receiverEthereumAddress String
   costInUsdc              BigInt
   maxRoleApplicableTime   Int[]
   roleAssigneds           RoleAssigned[]
+  expiresOn               DateTime       @default(now())
+  numberOfTxns            BigInt         @default(0)
 
-  @@index([serverId])
+  @@index([serverTelegramId])
   @@index([ownerAddress])
 }
 
 model RoleAssigned {
-  id             String   @id @default(uuid())
-  userId         String
-  username       String
-  serverId       String
-  expiryTime     DateTime
-  amount         BigInt
-  txnLink        String
-  joined         Boolean  @default(false)
-  inviteLink     String
-  createdAt      DateTime @default(now())
-  serverNormalId String
-  server         Server   @relation(fields: [serverNormalId], references: [id])
-  active         Boolean  @default(true)
+  id         String   @id @default(uuid())
+  userId     String
+  username   String
+  serverId   String
+  expiresOn  DateTime
+  amount     BigInt
+  txnLink    String
+  joined     Boolean  @default(false)
+  inviteLink String
+  createdAt  DateTime @default(now())
+  server     Server   @relation(fields: [serverId], references: [id])
+  active     Boolean  @default(true)
 
   @@unique([inviteLink, serverId])
-  @@index([expiryTime])
+  @@index([expiresOn])
 }
 
 model Invoice {
@@ -88,7 +89,7 @@ model Invoice {
   serverId           String
   roleApplicableTime Int
   token              String   @unique
-  expiresAt          DateTime
+  expiresOn          DateTime
 
   @@unique([userId, serverId])
 }

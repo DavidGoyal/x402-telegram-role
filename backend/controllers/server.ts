@@ -5,14 +5,23 @@ import jwt from "jsonwebtoken";
 // Get all servers where bot is configured
 export const getAllServers = async (req: Request, res: Response) => {
   try {
-    const servers = await prisma.server.findMany();
+    const servers = await prisma.server.findMany({
+      where: {
+        numberOfTxns: {
+          gt: 0,
+        },
+        expiresOn: {
+          gt: new Date(),
+        },
+      },
+    });
 
     res.status(200).json({
       success: true,
       servers: servers.map((server) => ({
         id: server.id,
         name: server.name,
-        serverId: server.serverId,
+        serverTelegramId: server.serverTelegramId,
         receiverSolanaAddress: server.receiverSolanaAddress,
         receiverEthereumAddress: server.receiverEthereumAddress,
         costInUsdc: server.costInUsdc.toString(),
@@ -28,9 +37,9 @@ export const getAllServers = async (req: Request, res: Response) => {
 // Get specific server by serverId
 export const getServerById = async (req: Request, res: Response) => {
   try {
-    const { serverId } = req.params;
+    const { serverTelegramId } = req.params;
 
-    if (!serverId) {
+    if (!serverTelegramId) {
       return res.status(400).json({
         success: false,
         error: "Server ID is required",
@@ -38,7 +47,11 @@ export const getServerById = async (req: Request, res: Response) => {
     }
 
     const server = await prisma.server.findUnique({
-      where: { serverId },
+      where: {
+        serverTelegramId: serverTelegramId,
+        numberOfTxns: { gt: 0 },
+        expiresOn: { gt: new Date() },
+      },
     });
 
     if (!server) {
@@ -53,7 +66,7 @@ export const getServerById = async (req: Request, res: Response) => {
       server: {
         id: server.id,
         name: server.name,
-        serverId: server.serverId,
+        serverTelegramId: server.serverTelegramId,
         receiverSolanaAddress: server.receiverSolanaAddress,
         receiverEthereumAddress: server.receiverEthereumAddress,
         costInUsdc: server.costInUsdc.toString(),
@@ -94,7 +107,7 @@ export const getMyServers = async (req: Request, res: Response) => {
       success: true,
       servers: servers.map((server) => ({
         id: server.id,
-        serverId: server.serverId,
+        serverTelegramId: server.serverTelegramId,
         serverName: server.name,
         walletAddresses: server.receiverEthereumAddress,
       })),
@@ -123,17 +136,17 @@ export const getMyServerByServerId = async (req: Request, res: Response) => {
       });
     }
 
-    const { serverId } = req.params;
-    if (!serverId) {
+    const { serverTelegramId } = req.params;
+    if (!serverTelegramId) {
       return res.status(400).json({
         success: false,
-        error: "Server ID is required",
+        error: "Server Telegram ID is required",
       });
     }
 
     const server = await prisma.server.findUnique({
       where: {
-        serverId,
+        serverTelegramId: serverTelegramId,
         ownerAddress: { equals: address, mode: "insensitive" },
       },
       include: {
@@ -158,7 +171,7 @@ export const getMyServerByServerId = async (req: Request, res: Response) => {
         txnLink: roleAssigned.txnLink,
         serverId: roleAssigned.serverId,
         createdAt: roleAssigned.createdAt,
-        expiryTime: roleAssigned.expiryTime,
+        expiresOn: roleAssigned.expiresOn,
         active: roleAssigned.active,
       })),
     });
@@ -186,20 +199,20 @@ export const getMyServerRevenueStats = async (req: Request, res: Response) => {
       });
     }
 
-    const { serverId } = req.params;
+    const { serverTelegramId } = req.params;
     const { period = "day" } = req.query;
 
-    if (!serverId) {
+    if (!serverTelegramId) {
       return res.status(400).json({
         success: false,
-        error: "Server ID is required",
+        error: "Server Telegram ID is required",
       });
     }
 
     // Verify server ownership
     const server = await prisma.server.findUnique({
       where: {
-        serverId,
+        serverTelegramId: serverTelegramId,
         ownerAddress: { equals: address, mode: "insensitive" },
       },
     });
@@ -214,7 +227,7 @@ export const getMyServerRevenueStats = async (req: Request, res: Response) => {
     // Fetch all role assignments for the server
     const roleAssignments = await prisma.roleAssigned.findMany({
       where: {
-        serverId: serverId,
+        serverId: server.id,
       },
       select: {
         amount: true,

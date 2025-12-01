@@ -28,4 +28,8 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
+app.listen(3002, () => {
+  console.log("Server is running on port 3002");
+});
+
 export default app;

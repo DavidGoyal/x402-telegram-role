@@ -12,9 +12,12 @@ const router = Router();
 
 // GET routes
 router.get("/servers", authenticate, getAllServers);
-router.get("/server/my-server/:serverId", getMyServerByServerId);
-router.get("/server/my-server/:serverId/revenue", getMyServerRevenueStats);
+router.get("/server/my-server/:serverTelegramId", getMyServerByServerId);
+router.get(
+  "/server/my-server/:serverTelegramId/revenue",
+  getMyServerRevenueStats
+);
 router.get("/server/my-servers", getMyServers);
-router.get("/server/:serverId", getServerById);
+router.get("/server/:serverTelegramId", getServerById);
 
 export default router;

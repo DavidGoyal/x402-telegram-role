@@ -174,7 +174,7 @@ export const getAccess = async (req: Request, res: Response) => {
 
     const [server, network, user] = await Promise.all([
       prisma.server.findUnique({
-        where: { serverId },
+        where: { id: serverId },
       }),
       prisma.network.findUnique({
         where: { id: networkId },
@@ -207,6 +207,20 @@ export const getAccess = async (req: Request, res: Response) => {
         .json({ success: false, error: "Insufficient Balance" });
     }
 
+    if (server.numberOfTxns <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Server has reached the maximum number of role assignments",
+      });
+    }
+
+    if (server.expiresOn <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        error: "Server subscription has expired",
+      });
+    }
+
     if (!server.maxRoleApplicableTime?.includes(roleApplicableTime)) {
       return res
         .status(400)
@@ -219,7 +233,7 @@ export const getAccess = async (req: Request, res: Response) => {
       const invoice = await prisma.invoice.findUnique({
         where: {
           token,
-          expiresAt: { gt: new Date() },
+          expiresOn: { gt: new Date() },
         },
       });
       if (!invoice) {
@@ -230,7 +244,7 @@ export const getAccess = async (req: Request, res: Response) => {
       if (
         invoice.roleApplicableTime !== roleApplicableTime ||
         invoice.userId !== user.id ||
-        invoice.serverId !== server.serverId
+        invoice.serverId !== server.id
       ) {
         return res.status(400).json({
           success: false,
@@ -300,9 +314,12 @@ export const getAccess = async (req: Request, res: Response) => {
         res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
         res.setHeader("x-payment-response", responseHeader);
 
-        const inviteLink = await bot.createChatInviteLink(server.serverId, {
-          creates_join_request: true,
-        });
+        const inviteLink = await bot.createChatInviteLink(
+          server.serverTelegramId,
+          {
+            creates_join_request: true,
+          }
+        );
         await bot.sendMessage(
           user.telegramId,
           `Here is your invite link to the server ${server.name}: ${inviteLink.invite_link}`
@@ -312,12 +329,11 @@ export const getAccess = async (req: Request, res: Response) => {
           data: {
             userId,
             username: user.telegramUsername,
-            serverId,
-            serverNormalId: server.id,
+            serverId: server.id,
             amount: totalCost,
             inviteLink: inviteLink.invite_link,
             txnLink: settleResponse.transaction,
-            expiryTime: new Date(Date.now() + roleApplicableTime * 1000),
+            expiresOn: new Date(Date.now() + roleApplicableTime * 1000),
           },
         });
 
@@ -325,7 +341,7 @@ export const getAccess = async (req: Request, res: Response) => {
           const invoice = await prisma.invoice.findUnique({
             where: {
               token,
-              expiresAt: { gt: new Date() },
+              expiresOn: { gt: new Date() },
             },
           });
           if (invoice) {
@@ -365,7 +381,7 @@ export const createInvoice = async (req: Request, res: Response) => {
 
     const [server, network] = await Promise.all([
       prisma.server.findUnique({
-        where: { serverId },
+        where: { id: serverId },
       }),
       prisma.network.findFirst({
         where: { name: "base-sepolia" },
@@ -382,6 +398,19 @@ export const createInvoice = async (req: Request, res: Response) => {
       return res
         .status(404)
         .json({ success: false, error: "Network not found" });
+    }
+
+    if (server.expiresOn <= new Date()) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Server subscription has expired" });
+    }
+
+    if (server.numberOfTxns <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Server has reached the maximum number of role assignments",
+      });
     }
 
     let user = await prisma.user.findUnique({
@@ -446,14 +475,14 @@ export const createInvoice = async (req: Request, res: Response) => {
       update: {
         token: uuidv4(),
         roleApplicableTime,
-        expiresAt: new Date(Date.now() + 60 * 1000),
+        expiresOn: new Date(Date.now() + 60 * 1000),
       },
       create: {
         userId,
         serverId,
         roleApplicableTime,
         token: uuidv4(),
-        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        expiresOn: new Date(Date.now() + 5 * 60 * 1000),
       },
     });
 
@@ -476,7 +505,7 @@ export const getInvoice = async (req: Request, res: Response) => {
     }
 
     const invoice = await prisma.invoice.findUnique({
-      where: { token: token as string, expiresAt: { gt: new Date() } },
+      where: { token: token as string, expiresOn: { gt: new Date() } },
     });
 
     if (!invoice) {
@@ -485,7 +514,22 @@ export const getInvoice = async (req: Request, res: Response) => {
         .json({ success: false, error: "Invoice not found" });
     }
 
-    res.status(200).json({ success: true, invoice });
+    const server = await prisma.server.findUnique({
+      where: { id: invoice.serverId },
+    });
+    if (!server) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Server not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      invoice: {
+        ...invoice,
+        serverTelegramId: server.serverTelegramId,
+      },
+    });
     return;
   } catch (error) {
     console.error(error);
@@ -507,9 +551,18 @@ export const isValidPersonJoiningServer = async (
       });
     }
 
+    const server = await prisma.server.findUnique({
+      where: { serverTelegramId: serverId.toString() },
+    });
+    if (!server) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Server not found" });
+    }
+
     const roleAssigned = await prisma.roleAssigned.findUnique({
       where: {
-        inviteLink_serverId: { inviteLink, serverId: serverId.toString() },
+        inviteLink_serverId: { inviteLink, serverId: server.id.toString() },
       },
     });
     if (!roleAssigned) {
