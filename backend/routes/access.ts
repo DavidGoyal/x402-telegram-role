@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  buyMyServerSubscription,
   createInvoice,
   getAccess,
   getInvoice,
@@ -13,5 +14,9 @@ app.post("/access", getAccess);
 app.post("/invoice", authenticate, createInvoice);
 app.get("/invoice", getInvoice);
 app.post("/isValidPerson", authenticate, isValidPersonJoiningServer);
+app.post(
+  "/server/my-server/:serverTelegramId/subscription",
+  buyMyServerSubscription
+);
 
 export default app;

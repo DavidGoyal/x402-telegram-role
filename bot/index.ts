@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const API_URL = process.env.API_URL || "http://localhost:3002";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http:/localhost:3000";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://x402-role.vercel.app";
 if (!TOKEN || !API_URL || !FRONTEND_URL) {
   throw new Error("TELEGRAM_TOKEN or API_URL or FRONTEND_URL is not set");
 }
